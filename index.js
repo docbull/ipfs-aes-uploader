@@ -4,28 +4,30 @@ const { Web3Storage, getFilesFromPath } = require('web3.storage')
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const dotenv = require('dotenv');
+dotenv.config();
 
 let filePaths = [];
 
 // readDirectory reads all files that you entered with `--path` parameters
 // and encrypts the all files using AES.
-async function readDirectory(videoName) {
+async function readDirectory(fileName, key) {
     const algorithm = "aes-256-cbc";
-    const password = "docbullwatson";
+    const password = key;
     
     return new Promise((resolve) => {
-        fs.readdir(path.join(videoName), (err, files) => {
+        fs.readdir(path.join(fileName), (err, files) => {
             if (files) {
                 files.forEach(file => {
-                    let chunk = fs.readFileSync(`${videoName}/${file}`);
+                    let chunk = fs.readFileSync(`${fileName}/${file}`);
                     var cipher = crypto.createCipher(algorithm, password);
                     var encrypted = Buffer.concat([cipher.update(chunk), cipher.final()]);
                     try {
-                        fs.writeFileSync(`${videoName}/${file}`, encrypted);
+                        fs.writeFileSync(`${fileName}/${file}`, encrypted);
                     } catch (err) {
                         console.error(err);
                     }
-                    filePaths.push(`${videoName}/${file}`);
+                    filePaths.push(`${fileName}/${file}`);
                 });
                 resolve('successfully read the directory');
             }
@@ -33,7 +35,7 @@ async function readDirectory(videoName) {
     });
 }
 
-// Web3StorageUploader uploads video chunks into IPFS network using Web3.Storage.
+// Web3StorageUploader uploads files into IPFS network using Web3.Storage.
 async function Web3StorageUploader(web3Token) {
     const token = web3Token;
 
@@ -47,18 +49,20 @@ async function Web3StorageUploader(web3Token) {
     
         console.log(`📤 Uploading ${files.length} files`);
         const cid = await storage.put(files);
-        console.log(`📦 Video chunks are added with CIDv1: "${cid}"`);
+        console.log(`📦 Files are added with CIDv1: "${cid}"`);
 
-        console.log('🎉 The video is successfully uploaded!');
+        console.log('🎉 The files is successfully uploaded!');
         resolve(cid);
     })
 }
 
 async function main () {
     const args = minimist(process.argv.slice(2));
-    const token = args.token;
     const path = args.path;
-    await readDirectory(path);
+    const key = args.key;
+    const token = process.env.Web3Token;
+
+    await readDirectory(path, key);
     const res = await Web3StorageUploader(token);
     console.log(res);
 }
